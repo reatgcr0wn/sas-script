@@ -1,4 +1,8 @@
 /*
+バンドメンバーが、一定時間以内に他のバンドでの出演がないかをチェックします。
+mainScript2()
+で実行します。
+
 カラムが、
 バンド名,出演日,出演ステージ,部,開始時刻,終了時刻,出演可能時間1日目,出演可能時間2日目,大学,団体,バンド読み,代表者,代表者カナ,代表者重複バンド,
 メンバー1名前,メンバー1重複バンド,メンバー2名前,メンバー2重複バンド,....,メンバー9名前,メンバー9重複バンド,
@@ -23,7 +27,7 @@ var idletime　= 45//何分未満を警告対象とするか
 
 var mainobj = {};
 //操作対象スプレッドシート
-mainobj.url = 'https://docs.google.com/spreadsheets/d/19yegjkmq6B2nPubV6Z_PPA9sOLxIr-pB503oE1FNxN8/edit#gid=347892'
+mainobj.url = 'https://docs.google.com/spreadsheets/d/11F0_XZ5CB2zBg6U9iC8SJNK4rN0s-CeN-0k59icTjyo/edit#gid=1321808809d=347892'
 //取得するシート名
 mainobj.sheetname = 'エントリー2016' 
 
@@ -53,7 +57,7 @@ function check(){
   var values = getSheetData2(mainobj.sheet);
   
   //for (var i = 1; i < values.length; i++ ){
-  for (var i = 1; i < 500; i++ ){  
+  for (var i = 1; i < 443; i++ ){  
     var day = values[i][1];//出演日
     var part = values[i][3];//出演部
     var start = values[i][4];//ステージ開始時刻
@@ -81,42 +85,61 @@ var overlap = [];
 var members = [];
 var another_members = [];
 //  for (var i = 1; i < values.length; i++ ){
-  for (var i = 1; i < 500; i++ ){
+  for (var i = 1; i < 443; i++ ){
     if(i!=bandindex){
-      if(values[i][1] == values[bandindex][1]){//dayをチェック
-        
-        //dayが同じ→時間だけ比べればよいので、
-        //年月日は無視してDateオブジェクトを生成
-        var band_start = +new Date(start); 
-        var another_start = +new Date(values[i][4]);
-        var diff_min = (another_start - band_start)/1000/60;
-        
-        if( diff_min >= 0&&diff_min < idletime){//時間が0分以上idletime分未満
+      if(values[i][0]&&values[i][1]&&values[i][3]&&values[i][4]){
+        if(values[i][1] == values[bandindex][1]){//dayをチェック
           
-          //メンバーチェック
-          var band_row = values[bandindex];//何回も使うのでキャッシュ
-          var another_row = values[i];
-          //メンバー追加
-          members.length = 0;
-          members.push(band_row[11],band_row[14],band_row[16],band_row[18],band_row[20],band_row[22],band_row[24],band_row[26],band_row[28],band_row[30]);
-          members = members.filter(function(e){return e !== "";});//空を削除
+          //dayが同じ→時間だけ比べればよいので、
+          //年月日は無視してDateオブジェクトを生成
+          var band_start = +new Date(start); 
+          var another_start = +new Date(values[i][4]);
+          var diff_min = (another_start - band_start)/1000/60;
           
-          another_members.length = 0;
-          another_members.push(another_row[11],another_row[14],another_row[16],another_row[18],another_row[20],another_row[22],another_row[24],another_row[26],another_row[28],another_row[30]);
-          another_members = another_members.filter(function(e){return e !== "";});
+          if( diff_min >= 0&&diff_min < idletime){//時間が0分以上30分未満
+            
+            //メンバーチェック
+            var band_row = values[bandindex];//何回も使うのでキャッシュ
+            var another_row = values[i];
+            //メンバー追加
+            members.length = 0;
+            members.push(trimText(band_row[11]),trimText(band_row[14]),trimText(band_row[16]),trimText(band_row[18]),trimText(band_row[20]),trimText(band_row[22]),trimText(band_row[24]));
+            members = members.filter(function(e){return e !== "";});//空を削除
+            
+            another_members.length = 0;
+            another_members.push(trimText(another_row[11]),trimText(another_row[14]),trimText(another_row[16]),trimText(another_row[18]),trimText(another_row[20]),trimText(another_row[22]),trimText(another_row[24]));
+            another_members = another_members.filter(function(e){return e !== "";});
 
-          for (var j in another_members){
-            if(members.indexOf(another_members[j]) !== -1){//メンバー被ってたら
-              if(overlap.indexOf(another_members[j]) === -1){//被ってる人リストになければ追加
-                Logger.log((bandindex+1)+':'+band_row[0]+' の '+another_members[j]+' さんが '+idletime+'分以内のバンド '+another_row[0]+' と重複しています。');
-                overlap.push(another_members[j]);
+            for (var j in another_members){
+              if(members.indexOf(another_members[j]) !== -1){//メンバー被ってたら
+                if(overlap.indexOf(another_members[j]) === -1){//被ってる人リストになければ追加
+                  Logger.log((bandindex+1)+':'+band_row[0]+' の '+another_members[j]+' さんが '+diff_min+'分後のバンド '+(i+1)+':'+another_row[0]+' と重複しています。');
+                  overlap.push(another_members[j]);
+                }
               }
             }
           }
         }
-      }
+       }
     }
   }
   return overlap;
 }
 
+//空白を取り除くよ
+function　trimText(txt){
+txt = txt.toString();
+ if(txt!=''){
+  var nbsp = String.fromCharCode(160);//&nbsp;
+  txt = txt.split(nbsp).join('　');
+  txt = txt.replace(' ','');
+  txt = txt.replace('　','');
+  txt = txt.replace(/\r/g,'');
+  txt = txt.replace(/\n/g,'');
+  txt = txt.replace(/^\t/g,'');
+  txt = txt.replace(/\t$/g,'');
+  txt = txt.replace(/^ /g,'');
+  txt = txt.replace(/ $/g,'');
+  }
+  return txt;
+};
